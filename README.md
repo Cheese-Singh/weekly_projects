@@ -45,7 +45,7 @@ Each script emphasizes understanding underlying mechanics rather than relying so
 
 ---
 
-### [`A5_PCA_vs_TSNE_fashion_mnist.py`](./A5_PCA_vs_TSNE_fashion_mnist.py)
+### [`PCA_vs_TSNE_fashion_mnist.py`](./A5_PCA_vs_TSNE_fashion_mnist.py)
 * **Description:** Compares PCA and t-SNE on the Fashion-MNIST dataset using an interactive side-by-side Plotly visualization. Demonstrates the difference between linear dimensionality reduction and nonlinear neighborhood-preserving projection.
 * **Dataset:** Fashion-MNIST from Kaggle
 * **Focus:** Dimensionality reduction, cluster visualization, PCA vs t-SNE comparison, reusable preprocessing pipeline integration.
