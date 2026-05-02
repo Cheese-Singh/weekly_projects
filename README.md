@@ -17,20 +17,20 @@ Each script emphasizes understanding underlying mechanics rather than relying so
 
 ## Contents
 
-### [`Everything_classifier.py`](./Everything_classifier.py)
+### [`Everything_classifier.py`](./01_Everything_classifier.py)
 * **Description:** Runs KNN, SVM, Decision Tree, and other classifiers on any toy dataset and prints accuracy scores in a formatted table.
 * **Stack:** `scikit-learn`, `pandas`, `tabulate`
 
 ---
 
-### [`Visualizing_hyperplanes.py`](./Visualizing_hyperplanes.py)
+### [`Visualizing_hyperplanes.py`](./02_Visualizing_hyperplanes.py)
 * **Description:** Plots SVM decision boundaries on 2D data, showing how they shift with different C values and kernels. Uses PCA for dimensionality reduction where needed.
 * **Outputs:** Saved plots in root directory (`plot1.png`, `plot10.png`, etc.)
 * **Stack:** `scikit-learn`, `matplotlib`, `numpy`
 
 ---
 
-### [`Automated_EDA_template.py`](./Automated_EDA_template.py)
+### [`Automated_EDA_template.py`](./03_Automated_EDA_template.py)
 * **Description:** A drop-in EDA function that takes any CSV and automatically generates correlation heatmaps and histograms for all numerical columns.
 * **Outputs:** Saved reports in `eda_outputs/`
 * **Stack:** `pandas`, `seaborn`
