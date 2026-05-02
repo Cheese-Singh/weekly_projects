@@ -16,24 +16,30 @@ df = pd.read_csv("titanic_data/train.csv")
 X = df.drop(columns=["Survived"])
 y = df["Survived"]
 
-numeric_pipeline = Pipeline(steps=[
+def build_preprocessor(drop_columns=None):
+    if drop_columns is None:
+        drop_columns = []
+
+    numeric_pipeline = Pipeline(steps=[
     ("imputer", SimpleImputer(strategy="median")),
     ("scaler", StandardScaler())
-])
+    ])
 
-categorical_pipeline = Pipeline(steps=[
-    ("imputer", SimpleImputer(strategy="most_frequent")),
-    ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False))
-])
+    categorical_pipeline = Pipeline(steps=[
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+        ("encoder", OneHotEncoder(handle_unknown="ignore", sparse_output=False))
+    ])
 
-preprocessor = ColumnTransformer(
-    transformers=[
-        ("drop_columns", "drop", ["PassengerId", "Name", "Ticket", "Cabin"]),
-        ("numeric", numeric_pipeline, make_column_selector(dtype_include=["int64", "float64"])),
-        ("categorical", categorical_pipeline, make_column_selector(dtype_include=["object"]))
-    ]
-)
+    preprocessor = ColumnTransformer(
+            transformers=[
+                ("drop_columns", "drop", drop_columns),
+                ("numeric", numeric_pipeline, make_column_selector(dtype_include=["int64", "float64"])),
+                ("categorical", categorical_pipeline, make_column_selector(dtype_include=["object"]))
+            ]
+    ) 
+    return preprocessor
 
+preprocessor = build_preprocessor(drop_columns=["PassengerId", "Name", "Ticket", "Cabin"])
 X_processed = preprocessor.fit_transform(X)
 feature_names = preprocessor.get_feature_names_out()
 processed_df = pd.DataFrame(X_processed, columns=feature_names)
