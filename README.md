@@ -37,7 +37,7 @@ Each script emphasizes understanding underlying mechanics rather than relying so
 
 ---
 
-### [`04_Sklearn_preprocessing_pipeline.py`](./04_Sklearn_preprocessing_pipeline.py)
+### [`Sklearn_preprocessing_pipeline.py`](./04_Sklearn_preprocessing_pipeline.py)
 * **Description:** Demonstrates an automated preprocessing workflow for a dirty tabular dataset using `Pipeline` and `ColumnTransformer`. Handles missing-value imputation, numerical feature scaling, categorical encoding, and column dropping inside a single reusable sklearn preprocessing object.
 * **Dataset:** Titanic dataset from Kaggle
 * **Focus:** Zero manual data-cleaning outside the pipeline; separates numerical and categorical transformations cleanly.
