@@ -51,3 +51,11 @@ Each script emphasizes understanding underlying mechanics rather than relying so
 * **Focus:** Dimensionality reduction, cluster visualization, PCA vs t-SNE comparison, reusable preprocessing pipeline integration.
 * **Output:** Interactive HTML visualization saved as `dimension_reduction_comparison.html`
 * **Stack:** `pandas`, `scikit-learn`, `plotly`, `kaggle`
+
+---
+
+### [`Audio_processing_and_ASR.py`](./audio_processing_and_ASR.py)
+* **Description:** A comprehensive exploration of audio engineering fundamentals and local automatic speech recognition (ASR). It features live wake-word audio listening, low-level binary WAV data manipulation, runtime waveform plotting, multi-buffered microphone recording, and hardware-accelerated local transcription.
+* **Dataset/Input:** Live local microphone stream and a standard test file (harvard.wav)
+* **Focus:** Digital signal processing basics, handling audio byte-buffers, real-time audio I/O streaming, and Apple Silicon optimized deep-learning transcription engines.
+* **Stack:** `pyaudio`, `wave`, `speech_recognition`, `mlx-whisper`, `numpy`, `matplotlib`
