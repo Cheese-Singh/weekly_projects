@@ -6,6 +6,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyaudio
 import mlx_whisper
+import sounddevice as sd
+import soundfile as sf
+from scipy.io.wavfile import write
+import time
+import queue
 
 # -------
 # MODELS
@@ -19,7 +24,7 @@ HF_REPO = "mlx-community/distil-whisper-large-v3"
 # ----------
 
 WAKE_WORDS = ["assistant", "hey assistant", "hello", "hey"]
-SLEEP_WORDS = ["sleep", "end", "exit", "quit"]
+SLEEP_WORDS = ["sleep", "end", "exit", "quit", "stop"]
 
 TEST_FILE = "harvard.wav"
 
@@ -208,7 +213,7 @@ def start_pyaudio():
 
 
 # -----------------------------------
-# AUDIO TRANSCRIPTION -> MLX Whisper
+# 4. AUDIO TRANSCRIPTION -> MLX Whisper
 # -----------------------------------
 
 def start_transcription(audio_file_data: np.ndarray) -> str:
@@ -231,9 +236,335 @@ def start_transcription(audio_file_data: np.ndarray) -> str:
     
     return transcription["text"] if "text" in transcription else ""
 
-                   
+
+# ----------------
+# 5. SOUNDDEVICE 
+# ----------------
+
+def start_sounddevice(filename, duration=5, samplerate=44_100):
+
+    print("\n" + "=" * 60)
+    print(" Starting SoundDevice ")
+    print("=" * 60 + "\n")
+
+    print(f"Recording started for duration : {duration} seconds")
+    audio_data = sd.rec(int(samplerate*duration), samplerate=samplerate, channels=1, dtype='int16')
+    sd.wait()
+    write(filename, samplerate, audio_data)
+    print(f"Recording saved to {filename}")
+
+    print("Audio Playback Now...")
+    sd.play(audio_data, samplerate)
+    sd.wait()
+
+    print("\n" + "=" * 60)
+    print(" SoundDevice End ")
+    print("=" * 60 + "\n")
+
+# --------------
+# 6. SOUNDFILE
+# --------------
+
+def start_soundfile(filename):
+
+    print("\n" + "=" * 60)
+    print(" Starting SoundFile ")
+    print("=" * 60 + "\n")
+
+    # extracting information
+    information = sf.info(filename)
+    print(information)
+
+    try:
+        audio, sr = sf.read(filename, dtype='float32')
+    except FileNotFoundError:
+        print(f"{filename} doesn't exist")
+        return
+    except Exception as e:
+        print(f"An error has occurred : {e}")
+
+    print(f"Playing file : {filename}")
+    sd.play(audio, sr)
+    sd.wait()
+
+    print("\n" + "=" * 60)
+    print(" SoundFile End ")
+    print("=" * 60 + "\n")
+
+def adjust_volume(filename, volume_level:float):
+
+    print("\n" + "=" * 60)
+    print(" Adjusting Volume ")
+    print("=" * 60 + "\n")
+
+    print(f"Audio file : {filename}")
+    print(f"Volume : {volume_level}")
+
+    try:
+        audio, sr = sf.read(filename, dtype='float32')
+    except FileNotFoundError:
+        print(f"{filename} doesn't exist")
+        return
+    except Exception as e:
+        print(f"An error has occurred : {e}")
+
+    change = volume_level * audio
+    change = np.clip(change, -1.0, 1.0)
+    sd.play(change, sr)
+    sd.wait()
+
+    print("\n" + "=" * 60)
+    print(" Volume Adjusted")
+    print("=" * 60 + "\n")
+
+def trim_audio(filename, start_sec=0, end_sec=1):
+
+    print("\n" + "=" * 60)
+    print(" Trimming File ")
+    print("=" * 60 + "\n")
+
+    try:
+        audio, sr = sf.read(filename, dtype='float32')
+        frames = len(audio)
+        duration = frames/sr
+
+        start = max(0, int(start_sec * sr))
+        end = min(frames, int(end_sec * sr))
+
+        if start >= end:
+            print("Invalid trim range")
+            print(f"Audio duration: {duration:.2f}s")
+            return
+
+        if start == 0 and end == frames:
+            print("No trimming")
+            print(f"Audio duration: {duration:.2f}s")
+            sd.play(audio, sr)
+            sd.wait()
+            return
+        
+        print("Audio trimmed")
+        print(f"Audio trimming: {start_sec}s - {end_sec}s")
+        print(f"Sample range: {start} - {end}")
+
+        trimmed = audio[start:end]
+        sd.play(trimmed, sr)
+        sd.wait()
+    
+    except FileNotFoundError:
+        print (f"{filename} not found")
+    
+    except Exception as e:
+        print (f"An error occurred : {e}")
+
+def voice_fade(filename, fade_duration=1.0):
+
+    print("\n" + "=" * 60)
+    print(" Voice Fading ")
+    print("=" * 60 + "\n")
+
+    try:
+        audio, sr = sf.read(filename, dtype='float32')
+    except FileNotFoundError:
+        print(f"{filename} doesn't exist")
+        return
+    except Exception as e:
+        print(f"An error has occurred : {e}")
+
+    fade_len = int(fade_duration * sr)
+    fade_len = min(fade_len, len(audio)//2)
+
+    fade_in = np.linspace(0, 1, fade_len)
+    fade_out = np.linspace(1, 0, fade_len)
+
+    result = audio.copy()
+
+    if audio.ndim == 1:
+        result[:fade_len] *= fade_in
+        result[-fade_len:] *= fade_out
+    else:
+        result[:fade_len, :] *= fade_in[:, None]
+        result[-fade_len:, :] *= fade_out[:, None]
+    
+    sd.play(result, sr)
+    sd.wait()
+
+    print("\n" + "=" * 60)
+    print(" Voice Fading Successful ")
+    print("=" * 60 + "\n")
+
+def normalize_audio_file(filename, target_peak = 0.9):
+
+    print("\n" + "=" * 60)
+    print(" Normalizing Audio File ")
+    print("=" * 60 + "\n")
+
+    try:
+        audio, sr = sf.read(filename, dtype='float32')
+    except FileNotFoundError:
+        print(f"{filename} doesn't exist")
+        return
+    except Exception as e:
+        print(f"An error has occurred : {e}")
+
+    peak = np.max(np.abs(audio))
+
+    if peak == 0:
+        print(f"{filename} is silent. No text")
+        return
+    
+    normalized = audio * peak / target_peak
+    sd.play(normalized, sr)
+    sd.wait()
+
+    print("\n" + "=" * 60)
+    print(" Audio File Normalized ")
+    print("=" * 60 + "\n")
+
+# ------------------------------
+# 7. REAL TIME MICROPHONE USAGE
+# ------------------------------
+
+def start_mic(seconds = 10):
+
+    print("\n" + "=" * 60)
+    print(" Starting Mic ")
+    print("=" * 60 + "\n")
+
+    def callback(indata, frames, time_info, status):
+        if status:
+            print(status)
+
+        rms = np.sqrt(np.mean(indata ** 2))
+        bars = int(rms * 100)
+        print("|" * bars)
+
+    with sd.InputStream(
+        samplerate=FRAME_RATE,
+        channels=CHANNELS,
+        dtype='float32',
+        callback=callback
+    ):
+        print("Listening...")
+        time.sleep(seconds)
+        
+    print("\n" + "=" * 60)
+    print(" Mic Recording Complete ")
+    print("=" * 60 + "\n")
+
+def record_until_silence(saved_audio="new.wav", silence_threshold = 0.02, silence_duration = 2.0, max_seconds = 20):
+    print("\n" + "=" * 60)
+    print(" Recording until silence detected ")
+    print("=" * 60 + "\n")
+
+    q = queue.Queue()
+    chunks = []
+
+    silent_time = 0
+    start_time = time.time()
+
+    def callback(indata, frames, time_info, status):
+        if status:
+            print(status)
+        q.put(indata.copy())
+    
+    try:
+        with sd.InputStream(samplerate=FRAME_RATE, channels=CHANNELS, dtype='float32', callback=callback):
+            print("Speak now: ")
+
+            while True:
+                chunk = q.get()
+                chunks.append(chunk)
+
+                rms = np.sqrt(np.mean(chunk ** 2))
+
+                chunk_duration = len(chunk)/FRAME_RATE
+
+                if rms < silence_threshold:
+                    silent_time += chunk_duration
+                else:
+                    silent_time = 0
+                
+                if silent_time >= silence_duration:
+                    print("Silence detected")
+                    break
+                
+                if time.time() - start_time >= max_seconds:
+                    print("Max recording time reached")
+                    break
+
+            audio = np.concatenate(chunks, axis=0)
+            sf.write(saved_audio, audio, FRAME_RATE)
+            print(f"File successfully saved : {saved_audio}")
+
+    except Exception as e:
+        print(f"An error has occurred : {e}")
+    
+    print("\n" + "=" * 60)
+    print(" Recording Complete ")
+    print("=" * 60 + "\n")
+
+def detect_live_speech(seconds = 10, threshold = 0.01):
+    print("\n" + "=" * 60)
+    print(" Live Speech Detection ")
+    print("=" * 60 + "\n")
+
+    def callback(indata, frames, time_info, status):
+        rms = np.sqrt(np.mean(indata ** 2))
+
+        if rms > threshold:
+            print(f"Speech detected at {time.time():.3f}")
+        else:
+            print("Silence")
+        
+    with sd.InputStream(samplerate=FRAME_RATE, channels=CHANNELS, dtype='float32', callback=callback):
+        time.sleep(seconds)
+    
+    print("\n" + "=" * 60)
+    print(" Detection complete ")
+    print("=" * 60 + "\n")
+
+def large_file_streaming(filename, blocksize = 1024):
+    print("\n" + "=" * 60)
+    print(" Streaming By Blocks ")
+    print("=" * 60 + "\n")
+
+    try:
+        with sf.SoundFile(filename) as file:
+            with sd.OutputStream(
+                samplerate=file.samplerate,
+                channels=file.channels,
+                dtype='float32'
+            ) as stream:
+                for block in file.blocks(blocksize=blocksize, dtype='float32'):
+                    stream.write(block)
+    except FileNotFoundError:
+        print(f"{filename} not found")
+    except Exception as e:
+        print(f"An error has occurred : {e}")
+
+    print("\n" + "=" * 60)
+    print(" Streaming Complete ")
+    print("=" * 60 + "\n")
+
+# -----------
+# 8. TESTING
+# -----------
+
 if __name__ == "__main__":
     start_speech_recognition()
     start_wave()
     start_pyaudio()
-    print(start_transcription("harvard.wav"))
+    print(start_transcription(TEST_FILE))
+    start_sounddevice("output.wav", duration=5, samplerate=44_100)
+    start_soundfile(TEST_FILE)
+    adjust_volume(TEST_FILE, 0.5)
+    adjust_volume(TEST_FILE, 3.0)
+    trim_audio(TEST_FILE)
+    trim_audio(TEST_FILE, 0, 100)
+    voice_fade(TEST_FILE, 5)
+    normalize_audio_file(TEST_FILE, 0.95)
+    start_mic()
+    record_until_silence()
+    detect_live_speech()
+    large_file_streaming(TEST_FILE)
